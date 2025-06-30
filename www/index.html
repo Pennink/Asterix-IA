@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Asterix IA - Painel</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { -webkit-tap-highlight-color: transparent; }
-    </style>
+    <style> body { -webkit-tap-highlight-color: transparent; } </style>
 </head>
 <body class="bg-gray-900 text-white flex flex-col h-screen font-sans">
 
@@ -18,7 +16,6 @@
     <main class="flex-grow flex justify-center items-center p-4">
         <div class="w-full max-w-sm space-y-5">
             
-            <!-- Card da Banca -->
             <div class="bg-gray-800 p-4 rounded-xl shadow-lg">
                 <h2 class="text-lg font-bold text-cyan-300 mb-3 text-center">Banca</h2>
                 <div class="grid grid-cols-2 gap-4 text-center">
@@ -29,7 +26,6 @@
                 </div>
             </div>
 
-            <!-- Card de Ordem Aberta -->
             <div id="open-order-card" class="bg-gray-800 p-4 rounded-xl shadow-lg hidden">
                 <h2 class="text-lg font-bold text-cyan-300 mb-3 text-center">Posição Aberta</h2>
                 <div class="grid grid-cols-2 gap-2 text-sm mb-2">
@@ -44,7 +40,6 @@
                 </div>
             </div>
 
-            <!-- Botão de Controlo -->
             <div class="bg-gray-800 p-4 rounded-xl shadow-lg">
                 <button id="toggle-button" class="w-full py-4 rounded-lg text-lg font-bold text-white transition-colors duration-300" disabled>Aguarde...</button>
             </div>
@@ -58,8 +53,9 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Quando estiver na nuvem, este URL será dinâmico. Para testes locais, usamos o IP.
-            const SERVER_URL = "http://192.168.1.65:5000"; 
+            // CORRIGIDO: O URL agora é o do próprio site, tornando-o dinâmico.
+            // Isto funciona tanto localmente como na nuvem.
+            const SERVER_URL = window.location.origin;
 
             const elements = {
                 toggleButton: document.getElementById('toggle-button'),
@@ -152,7 +148,7 @@
 
             elements.toggleButton.addEventListener('click', sendCommand);
             fetchAndUpdateState();
-            setInterval(fetchAndUpdateState, 3000);
+            setInterval(fetchAndUpdateState, 5000); // Aumentamos o tempo para dar margem ao servidor na nuvem
         });
     </script>
 </body>
