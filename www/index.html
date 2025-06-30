@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Asterix IA - Painel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { -webkit-tap-highlight-color: transparent; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col h-screen font-sans">
+
+    <header class="bg-gray-800 p-4 text-center shadow-lg">
+        <h1 class="text-xl font-bold text-cyan-400">ASTERIX IA</h1>
+    </header>
+
+    <main class="flex-grow flex justify-center items-center p-4">
+        <div class="w-full max-w-sm space-y-5">
+            
+            <!-- Card da Banca -->
+            <div class="bg-gray-800 p-4 rounded-xl shadow-lg">
+                <h2 class="text-lg font-bold text-cyan-300 mb-3 text-center">Banca</h2>
+                <div class="grid grid-cols-2 gap-4 text-center">
+                    <div><p class="text-xs text-gray-400">Saldo</p><p id="balance-value" class="text-lg font-semibold">--</p></div>
+                    <div><p class="text-xs text-gray-400">Capital</p><p id="equity-value" class="text-lg font-semibold">--</p></div>
+                    <div><p class="text-xs text-gray-400">Lucro/Dia</p><p id="pl-value" class="text-lg font-semibold">--</p></div>
+                    <div><p class="text-xs text-gray-400">Posições</p><p id="positions-value" class="text-lg font-semibold">--</p></div>
+                </div>
+            </div>
+
+            <!-- Card de Ordem Aberta -->
+            <div id="open-order-card" class="bg-gray-800 p-4 rounded-xl shadow-lg hidden">
+                <h2 class="text-lg font-bold text-cyan-300 mb-3 text-center">Posição Aberta</h2>
+                <div class="grid grid-cols-2 gap-2 text-sm mb-2">
+                    <div><span class="text-gray-400">Ativo:</span> <span id="order-symbol">--</span></div>
+                    <div><span class="text-gray-400">Tipo:</span> <span id="order-type">--</span></div>
+                    <div><span class="text-gray-400">Volume:</span> <span id="order-volume">--</span></div>
+                    <div><span class="text-gray-400">Abertura:</span> <span id="order-open-price">--</span></div>
+                </div>
+                <div class="text-center bg-gray-900/60 rounded-lg p-2">
+                     <p class="text-xs text-gray-400">Lucro da Posição</p>
+                     <p id="order-profit" class="text-2xl font-bold">--</p>
+                </div>
+            </div>
+
+            <!-- Botão de Controlo -->
+            <div class="bg-gray-800 p-4 rounded-xl shadow-lg">
+                <button id="toggle-button" class="w-full py-4 rounded-lg text-lg font-bold text-white transition-colors duration-300" disabled>Aguarde...</button>
+            </div>
+
+        </div>
+    </main>
+    
+    <footer id="log-footer" class="bg-gray-800 p-3 text-center text-sm text-gray-400 flex-shrink-0">
+        Conectando...
+    </footer>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Quando estiver na nuvem, este URL será dinâmico. Para testes locais, usamos o IP.
+            const SERVER_URL = "http://192.168.1.65:5000"; 
+
+            const elements = {
+                toggleButton: document.getElementById('toggle-button'),
+                logFooter: document.getElementById('log-footer'),
+                balanceValue: document.getElementById('balance-value'),
+                equityValue: document.getElementById('equity-value'),
+                plValue: document.getElementById('pl-value'),
+                positionsValue: document.getElementById('positions-value'),
+                openOrderCard: document.getElementById('open-order-card'),
+                orderSymbol: document.getElementById('order-symbol'),
+                orderType: document.getElementById('order-type'),
+                orderVolume: document.getElementById('order-volume'),
+                orderOpenPrice: document.getElementById('order-open-price'),
+                orderProfit: document.getElementById('order-profit'),
+            };
+            
+            let state = { status: "INATIVO" };
+
+            async function fetchAndUpdateState() {
+                try {
+                    const response = await fetch(`${SERVER_URL}/api/state`);
+                    if (!response.ok) throw new Error("Servidor não respondeu.");
+                    const data = await response.json();
+                    
+                    state.status = data.robot_status;
+                    
+                    updateAccountInfo(data.account_info);
+                    updateOpenOrderCard(data.account_info, data.open_position_info);
+                    updateUI();
+                    elements.logFooter.textContent = `Conectado | Status: ${state.status}`;
+                } catch (error) {
+                    elements.logFooter.textContent = "Falha na conexão.";
+                    elements.toggleButton.textContent = "Erro de Conexão";
+                    elements.toggleButton.className = 'w-full py-4 rounded-lg text-lg font-bold text-white bg-red-800';
+                    elements.toggleButton.disabled = true;
+                }
+            }
+
+            async function sendCommand() {
+                elements.toggleButton.disabled = true;
+                const newStatus = (state.status === "ATIVO") ? "INATIVO" : "ATIVO";
+
+                try {
+                    await fetch(`${SERVER_URL}/api/config`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ robot_status: newStatus }),
+                    });
+                    await fetchAndUpdateState();
+                } catch (error) {
+                    elements.logFooter.textContent = "Falha ao enviar comando.";
+                } finally {
+                    elements.toggleButton.disabled = false;
+                }
+            }
+            
+            function updateAccountInfo(info) {
+                if (!info) return;
+                elements.balanceValue.textContent = `$${(info.balance || 0).toFixed(2)}`;
+                elements.equityValue.textContent = `$${(info.equity || 0).toFixed(2)}`;
+                elements.positionsValue.textContent = info.open_positions || 0;
+                elements.plValue.textContent = (info.profit_loss_day || 0).toFixed(2);
+                elements.plValue.className = `text-lg font-semibold ${(info.profit_loss_day > 0) ? 'text-green-400' : (info.profit_loss_day < 0) ? 'text-red-400' : 'text-gray-300'}`;
+            }
+
+            function updateOpenOrderCard(accountInfo, posInfo) {
+                if (accountInfo && accountInfo.open_positions > 0 && posInfo) {
+                    elements.orderSymbol.textContent = posInfo.symbol;
+                    elements.orderType.textContent = posInfo.type === 0 ? 'Compra' : 'Venda';
+                    elements.orderVolume.textContent = posInfo.volume;
+                    elements.orderOpenPrice.textContent = posInfo.open_price.toFixed(5);
+                    elements.orderProfit.textContent = posInfo.profit.toFixed(2);
+                    elements.orderProfit.className = `text-2xl font-bold ${(posInfo.profit > 0) ? 'text-green-400' : (posInfo.profit < 0) ? 'text-red-400' : 'text-gray-300'}`;
+                    elements.openOrderCard.classList.remove('hidden');
+                } else {
+                    elements.openOrderCard.classList.add('hidden');
+                }
+            }
+
+            function updateUI() {
+                elements.toggleButton.disabled = false;
+                if (state.status === "ATIVO") {
+                    elements.toggleButton.textContent = "CONECTADO";
+                    elements.toggleButton.className = 'w-full py-4 rounded-lg text-lg font-bold text-white bg-green-600';
+                } else {
+                    elements.toggleButton.textContent = "CONECTAR";
+                    elements.toggleButton.className = 'w-full py-4 rounded-lg text-lg font-bold text-white bg-gray-600 hover:bg-gray-700';
+                }
+            }
+
+            elements.toggleButton.addEventListener('click', sendCommand);
+            fetchAndUpdateState();
+            setInterval(fetchAndUpdateState, 3000);
+        });
+    </script>
+</body>
+</html>
